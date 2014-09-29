@@ -1,0 +1,8 @@
+{
+"food":
+  {"dlambda": 21, "dprice": 1},
+"household":
+  {"dlambda": 3, "dprice": 5},
+"clothing":
+  {"dlambda": 0.5, "dprice": 25}
+}
