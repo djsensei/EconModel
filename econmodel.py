@@ -48,18 +48,28 @@ class City(object):
     self.failed_businesses = []
 
   def compile_dtypes(self):
+    '''
+    Create a dict of demand type information, keyed by type-name
+    '''
     dtraw = f.get_demand_types() # dict of demand types from json
     dt = {}
     for t in dtraw:
-      dt[t] = DemandType(t, dtraw[t]['dlambda'], dtraw[t]['dprice'])
+      dt[t] = DemandType(t,
+                         dtraw[t]['dlambda'],
+                         dtraw[t]['dprice'])
     return dt
 
   def compile_btypes(self):
+    '''
+    Create a dict of business type information, keyed by type-name
+    '''
     btraw = f.get_business_types()
     bt = {}
     for t in btraw:
-      bt[t] = BusinessType(t, btraw['init_cash'], btraw['init_need_threshold'],
-                           btraw['init_need_radius'], btraw['burnrate'])
+      bt[t] = BusinessType(t, btraw[t]['init_cash'],
+                           btraw[t]['init_need_threshold'],
+                           btraw[t]['init_need_radius'],
+                           btraw[t]['burnrate'])
     return bt
 
   def populate(self, n):
@@ -67,7 +77,7 @@ class City(object):
     Adds n people to the city
     '''
     for i in range(n):
-      self.population.append(Person(self, f.generate_person_name()))
+      self.people.append(Person(self, f.generate_person_name()))
 
   def generate_business_locations(self):
     '''
@@ -89,8 +99,8 @@ class City(object):
     nl = len(self.business_locations)
     fill_indices = sample(range(nl), int(nl * ratio))
     for i in fill_indices:
-      bt = choice(self.btypes)
-      bt.startup(self, self.business_locations[i].location,
+      bt = choice(self.btypes.keys())
+      self.btypes[bt].startup(self, self.business_locations[i],
                  f.generate_business_name())
 
   def pop_density_rand(self):
@@ -101,7 +111,7 @@ class City(object):
     '''
     loc = (self.size + 1, 0)
     while f.distance(loc, (0, 0)) > self.size:
-      loc = (norm().rvs(scale = self.size, norm().rvs(scale = self.size)
+      loc = (norm(scale = self.size).rvs(), norm(scale = self.size).rvs())
     return loc
 
   def bizfail(self, business):
@@ -127,11 +137,11 @@ class City(object):
       if bl.available:
         best = 0
         best_type = None
-        for bt in self.btypes:
-          s = bt.startup_score(self, bl)
+        for bname, b_obj in self.btypes.iteritems():
+          s = b_obj.startup_score(self, bl)
           if s > best:
             best = s
-            best_type = bt
+            best_type = b_obj
         if best >= 1:
           best_type.startup(self, bl, f.generate_business_name())
     for p in self.people:
@@ -178,9 +188,26 @@ class Person(object):
 
   def fulfill(self):
     '''
-    Tries to fulfill needs at nearby businesses
+    Tries to fulfill needs at nearby businesses. Currently chooses randomly
+      from businesses inside the demand radius.
     '''
-    pass
+    for need, amt in self.needs.iteritems():
+      r = self.city.dtypes[need].demand_radius(amt)
+      pos_biz = [] # potential businesses
+      for b in self.city.businesses:
+        if f.distance(b.location, self.location) < r:
+          pos_biz.append(b)
+      if len(pos_biz) > 0:
+        # choose a random business to win
+        self.give_biz(need, choice(pos_biz))
+
+  def give_biz(self, need, business):
+    '''
+    Gives the business to that business. Empties need, pays the loots.
+    '''
+    payment = self.needs[need] * self.city.dtypes[need].dprice
+    business.cash += payment
+    self.needs[need] = 0
 
 class Business(object):
   def __init__(self, city, name, blocation, btype):
@@ -188,11 +215,21 @@ class Business(object):
     self.name = name
     self.blocation = blocation
     self.blocation.fill()
+    self.location = self.blocation.location
     self.btype = btype
-    self.cash = biztype.initial_cash
+    self.cash = btype.initial_cash
     self.birthday = city.age
     self.deathday = None
     self.lifespan = None
+
+  def __repr__(self):
+    return self.name + ' [type: ' + self.btype.bname + '] [age: ' + \
+           str(self.age) + '] [cash: $' + str(self.cash) + ']'
+
+  def age(self):
+    if self.deathday == None:
+      return self.city.age - self.birthday
+    return self.deathday - self.birthday
 
   def burn(self):
     '''
@@ -225,7 +262,7 @@ class BusinessLocation(object):
 class BusinessType(object):
   def __init__(self, bname, init_cash, init_need_threshold,
                init_need_radius, burnrate):
-    self.bname = btype
+    self.bname = bname
     self.initial_cash = init_cash
     self.initial_need_threshold = init_need_threshold
     self.initial_need_radius = init_need_radius
@@ -234,15 +271,19 @@ class BusinessType(object):
   def startup_score(self, city, blocation):
     '''
     Determines how good this location would be to start a business of this type
-    Must be >= 1 to trigger a startup
+    Must be >= 1 to trigger a startup.
     '''
-    pass
+    local_demand = 0.
+    for p in city.people:
+      if f.inside(p.location, blocation.location, self.initial_need_radius):
+        local_demand += p.needs[self.bname]
+    return local_demand / self.initial_need_threshold
 
   def startup(self, city, blocation, name):
     '''
     Starts a business of this type in that location!
     '''
-    self.city.businesses.append(Business(city, name, blocation, self))
+    city.businesses.append(Business(city, name, blocation, self))
 
 class DemandType(object):
   def __init__(self, dname, dlambda, dprice):
@@ -250,9 +291,17 @@ class DemandType(object):
     self.dlambda = dlambda
     self.dprice = dprice
 
-  def demand_radius(self, need):
+  def demand_radius(self, need_amount):
     '''
     Determines the radius that a person will go to fulfill this type of need
       given the quantity of need
     '''
-    pass
+    return 1. + need_amount / self.dlambda
+
+
+def main():
+  city = City("Dmotopia", 10, 1000)
+  city.life(10)
+
+if __name__ == '__main__':
+  main()

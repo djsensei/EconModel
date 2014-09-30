@@ -7,7 +7,7 @@ def get_demand_types(dfile = 'demand_types.json'):
   return dt
 
 def get_business_types(bfile = 'business_types.json'):
-  with open(dfile) as bf:
+  with open(bfile) as bf:
     bt = json.loads(bf.read())
   return bt
 

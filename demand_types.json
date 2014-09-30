@@ -1,8 +1,8 @@
 {
 "food":
-  {"dlambda": 21, "dprice": 1},
+  {"dlambda": 21.0, "dprice": 1.0},
 "household":
-  {"dlambda": 3, "dprice": 5},
+  {"dlambda": 3.0, "dprice": 5.0},
 "clothing":
-  {"dlambda": 0.5, "dprice": 25}
+  {"dlambda": 0.5, "dprice": 25.0}
 }
