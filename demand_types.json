@@ -4,5 +4,5 @@
 "household":
   {"dlambda": 3.0, "dprice": 5.0},
 "clothing":
-  {"dlambda": 0.5, "dprice": 25.0}
+  {"dlambda": 0.25, "dprice": 25.0}
 }

@@ -31,6 +31,7 @@ import numpy as np
 from scipy.stats import poisson, norm
 from random import sample, choice
 import functions as f
+import plotting as plots
 
 class City(object):
   def __init__(self, name, size, n_people):
@@ -46,6 +47,9 @@ class City(object):
     self.business_locations = self.generate_business_locations()
     self.business_populate(ratio = .75)
     self.failed_businesses = []
+
+    self.pophistory = [self.popreport()]
+    self.bizhistory = [self.bizreport()]
 
   def compile_dtypes(self):
     '''
@@ -120,7 +124,7 @@ class City(object):
     '''
     self.failed_businesses.append(business)
     self.businesses.remove(business)
-    self.business_locations[business.location].free()
+    business.blocation.free()
 
   def city_cycle(self):
     '''
@@ -148,6 +152,8 @@ class City(object):
       p.fulfill()
     for b in self.businesses:
       b.burn()
+    self.pophistory.append(self.popreport())
+    self.bizhistory.append(self.bizreport())
 
   def life(self, ncycles):
     '''
@@ -157,6 +163,33 @@ class City(object):
     for i in xrange(ncycles):
       self.city_cycle()
 
+  def bizreport(self):
+    '''
+    Creates a dictionary of current business status in the city.
+    Use for time-series plots or something.
+    '''
+    bd = {}
+    for b_type, bt_obj in self.btypes.iteritems():
+      bd[b_type] = {'count': 0, 'totalcash': 0.0}
+    for b in self.businesses:
+      bd[b.type]['count'] += 1
+      bd[b.type]['totalcash'] += b.cash
+    return bd
+
+  def popreport(self):
+    '''
+    Creates a dictionary of current people status in the city.
+    Use for time-series plots or something.
+    '''
+    pd = {}
+    for d_type, dt_obj in self.dtypes.iteritems():
+      pd[d_type] = {'demand_count': 0, 'total_demand': 0.0}
+    for p in self.people:
+      for n_type, n_amt in p.needs.iteritems():
+        if n_amt > 0:
+          pd[n_type]['demand_count'] += 1
+          pd[n_type]['total_demand'] += n_amt
+    return pd
 
 class Person(object):
   def __init__(self, city, name):
@@ -217,6 +250,7 @@ class Business(object):
     self.blocation.fill()
     self.location = self.blocation.location
     self.btype = btype
+    self.type = btype.bname
     self.cash = btype.initial_cash
     self.birthday = city.age
     self.deathday = None
@@ -301,7 +335,8 @@ class DemandType(object):
 
 def main():
   city = City("Dmotopia", 10, 1000)
-  city.life(10)
+  city.life(200)
+  plots.business_history(city)
 
 if __name__ == '__main__':
   main()

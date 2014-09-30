@@ -1,11 +1,11 @@
 {
 "food":
   {"init_cash": 1000.0, "init_need_threshold": 100.0, "init_need_radius": 1.0,
-   "burnrate": 200.0},
+   "burnrate": 600.0},
 "household":
   {"init_cash": 2000.0, "init_need_threshold": 200.0, "init_need_radius": 2.0,
-   "burnrate": 200.0},
+   "burnrate": 800.0},
 "clothing":
   {"init_cash": 2000.0, "init_need_threshold": 200.0, "init_need_radius": 3.0,
-   "burnrate": 200.0}
+   "burnrate": 1000.0}
 }
